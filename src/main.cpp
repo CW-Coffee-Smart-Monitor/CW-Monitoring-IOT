@@ -10,7 +10,6 @@
 // =====================
 // KIRIM WEBHOOK
 // =====================
-
 void sendToServer(JsonDocument& doc) {
   if (WiFi.status() == WL_CONNECTED) {
 
@@ -32,14 +31,13 @@ void sendToServer(JsonDocument& doc) {
     http.end();
 
   } else {
-    Serial.println("Gagal mengirim data ke server: WiFi tidak terhubung");  
+    Serial.println("Gagal mengirim data ke server: WiFi tidak terhubung");
   }
 }
 
 // =====================
 // KONFIGURASI WIFI & MQTT
 // =====================
-
 #define WIFI_SSID "JTI-POLINEMA-2G"
 #define WIFI_PASSWORD "jtifast!"
 
@@ -48,7 +46,6 @@ WiFiClient espClient;
 // =====================
 // SETUP KONEKSI WIFI & MQTT
 // =====================
-
 void setup_wifi() {
   delay(10);
   Serial.println();
@@ -65,13 +62,12 @@ void setup_wifi() {
     retry++;
   }
 
-  if (WiFi.status() != WL_CONNECTED)
-  {
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Gagal terhubung ke WiFi");
     return;
   } else {
-  Serial.println("\nWiFi connected");
-  Serial.println(WiFi.localIP());
+    Serial.println("\nWiFi connected");
+    Serial.println(WiFi.localIP());
   }
 }
 
@@ -114,6 +110,17 @@ void setup_wifi() {
 #define TRIG_PIN 26
 #define ECHO_PIN 27
 
+// =====================
+// PIN LED RGB COMMON ANODE
+// R: D2  / GPIO 2
+// G: D4  / GPIO 4
+// B: D21 / GPIO 21
+// Common / kaki panjang -> 3V3
+// =====================
+#define LED_R_PIN 2
+#define LED_G_PIN 4
+#define LED_B_PIN 21
+
 MFRC522 rfid(SS_PIN, RST_PIN);
 
 // UID user yang sedang check-in
@@ -137,27 +144,55 @@ const unsigned long monitorInterval = 2000;
 // // =====================
 // // FUNGSI PUBLISH MQTT
 // // =====================
-
+//
 // void publishToMQTT(JsonDocument& doc) {
 //   if (!client.connected()) {
 //     reconnect();
 //   }
-
+//
 //   client.loop();
-
+//
 //   String payload;
 //   serializeJson(doc, payload);
 //   bool success = client.publish("cafe/table12/events", payload.c_str());
-
+//
 //   if (success) {
 //     Serial.println("MQTT publish successful");
 //   } else {
 //     Serial.println("MQTT publish failed");
 //   }
-
+//
 //   Serial.println(payload);
 //   Serial.println("-----------------------");
 // }
+
+// ==========================================
+// FUNGSI LED RGB
+// Common Anode: LOW = nyala, HIGH = mati
+// ==========================================
+
+void setRGB(bool red, bool green, bool blue) {
+  digitalWrite(LED_R_PIN, red   ? LOW : HIGH);
+  digitalWrite(LED_G_PIN, green ? LOW : HIGH);
+  digitalWrite(LED_B_PIN, blue  ? LOW : HIGH);
+}
+
+void ledOff()    { setRGB(true,  true,  true);  }
+void ledRed()    { setRGB(false, true,  true);  }
+void ledGreen()  { setRGB(true,  false, true);  }
+void ledBlue()   { setRGB(true,  true,  false); }
+void ledYellow() { setRGB(false, false, true);  }
+void ledCyan()   { setRGB(true,  false, false); } 
+void ledPurple() { setRGB(false, true,  false); }
+
+void blinkLED(void (*colorFunc)(), int times, int delayMs) {
+  for (int i = 0; i < times; i++) {
+    colorFunc();
+    delay(delayMs);
+    ledOff();
+    delay(delayMs);
+  }
+}
 
 // =====================
 // FUNGSI AMBIL UID RFID
@@ -172,7 +207,7 @@ String getUID() {
 
     uidString += String(rfid.uid.uidByte[i], HEX);
 
-    if (i < rfid.uid.size - 1) { 
+    if (i < rfid.uid.size - 1) {
       uidString += ":";
     }
   }
@@ -211,6 +246,24 @@ bool cekOccupied(float distance) {
   }
 
   return false;
+}
+
+// =====================
+// UPDATE LED BERDASARKAN STATUS MEJA
+// =====================
+void updateStatusLED(float distance) {
+  bool isOccupied = cekOccupied(distance);
+
+  if (isCheckedIn) {
+    // Meja sedang dipakai / sudah check-in
+    ledGreen();
+  } else if (isOccupied) {
+    // Ada orang, tapi belum check-in
+    ledYellow();
+  } else {
+    // Kosong
+    ledBlue();
+  }
 }
 
 // =====================
@@ -331,6 +384,8 @@ void handleAutoCheckout(float distance) {
 
     Serial.println("AUTO CHECK OUT:");
     printEventJson("AUTO_CHECK_OUT", oldUID, distance, "EMPTY_TIMEOUT");
+
+    blinkLED(ledPurple, 3, 150);
   }
 }
 
@@ -353,10 +408,14 @@ void handleRFIDTap(String tappedUID, float distance) {
 
       Serial.println("CHECK IN:");
       printEventJson("CHECK_IN", currentUID, distance);
+
+      blinkLED(ledGreen, 2, 150);
     } else {
       // CHECK IN ditolak karena tidak ada orang
       Serial.println("CHECK IN DITOLAK:");
       printEventJson("CHECK_IN_REJECTED", tappedUID, distance, "NOT_OCCUPIED");
+
+      blinkLED(ledRed, 3, 150);
     }
 
     return;
@@ -376,6 +435,8 @@ void handleRFIDTap(String tappedUID, float distance) {
     Serial.println("CHECK OUT:");
     printEventJson("CHECK_OUT", oldUID, distance);
 
+    blinkLED(ledBlue, 2, 150);
+
     return;
   }
 
@@ -390,6 +451,8 @@ void handleRFIDTap(String tappedUID, float distance) {
       "TABLE_ALREADY_USED_BY_OTHER_UID",
       currentUID
     );
+
+    blinkLED(ledRed, 3, 150);
 
     return;
   }
@@ -407,12 +470,20 @@ void setup() {
 
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
+
+  pinMode(LED_R_PIN, OUTPUT);
+  pinMode(LED_G_PIN, OUTPUT);
+  pinMode(LED_B_PIN, OUTPUT);
+
+  ledOff();
+
+  Serial.println("Sistem meja RFID + Ultrasonik + WiFi + Webhook + LED RGB siap.");
 }
 
 void loop() {
   // if (!client.connected()) {
   //   reconnect();
-  // } 
+  // }
   // client.loop();
 
   float distance = bacaJarakCM();
@@ -441,4 +512,7 @@ void loop() {
     printMonitoringJson(distance);
     lastMonitorTime = millis();
   }
+
+  // Update indikator LED
+  updateStatusLED(distance);
 }
