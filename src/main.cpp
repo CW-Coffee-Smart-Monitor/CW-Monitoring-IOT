@@ -2,6 +2,92 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <ArduinoJson.h>
+#include <WiFi.h>
+// #include <PubSubClient.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+
+// =====================
+// KIRIM WEBHOOK
+// =====================
+
+void sendToServer(JsonDocument& doc) {
+  if (WiFi.status() == WL_CONNECTED) {
+
+    WiFiClientSecure client;
+    client.setInsecure(); // Disable certificate validation (not recommended for production)
+
+    HTTPClient http;
+    http.begin(client, "https://cw-monitoring.vercel.app/api/webhook");
+
+    http.addHeader("Content-Type", "application/json");
+
+    String jsonString;
+    serializeJson(doc, jsonString);
+
+    int responseCode = http.POST(jsonString);
+
+    Serial.print("HTTP Response: ");
+    Serial.println(responseCode);
+    http.end();
+
+  } else {
+    Serial.println("Gagal mengirim data ke server: WiFi tidak terhubung");  
+  }
+}
+
+// =====================
+// KONFIGURASI WIFI & MQTT
+// =====================
+
+#define WIFI_SSID "JTI-POLINEMA-2G"
+#define WIFI_PASSWORD "jtifast!"
+
+WiFiClient espClient;
+
+// =====================
+// SETUP KONEKSI WIFI & MQTT
+// =====================
+
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(WIFI_SSID);
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  int retry = 0;
+
+  while (WiFi.status() != WL_CONNECTED && retry < 20) {
+    delay(500);
+    Serial.print(".");
+    retry++;
+  }
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("Gagal terhubung ke WiFi");
+    return;
+  } else {
+  Serial.println("\nWiFi connected");
+  Serial.println(WiFi.localIP());
+  }
+}
+
+// void reconnect() {
+//   while (!client.connected()) {
+//     Serial.print("Attempting MQTT connection...");
+//     if (client.connect("ESP32_TABLE_12")) {
+//       Serial.println("connected");
+//     } else {
+//       Serial.print("failed, rc=");
+//       Serial.print(client.state());
+//       Serial.println(" try again in 2 seconds");
+//       delay(2000);
+//     }
+//   }
+// }
 
 // =====================
 // KONFIGURASI MEJA
@@ -48,6 +134,31 @@ const unsigned long rfidCooldown = 2000;
 unsigned long lastMonitorTime = 0;
 const unsigned long monitorInterval = 2000;
 
+// // =====================
+// // FUNGSI PUBLISH MQTT
+// // =====================
+
+// void publishToMQTT(JsonDocument& doc) {
+//   if (!client.connected()) {
+//     reconnect();
+//   }
+
+//   client.loop();
+
+//   String payload;
+//   serializeJson(doc, payload);
+//   bool success = client.publish("cafe/table12/events", payload.c_str());
+
+//   if (success) {
+//     Serial.println("MQTT publish successful");
+//   } else {
+//     Serial.println("MQTT publish failed");
+//   }
+
+//   Serial.println(payload);
+//   Serial.println("-----------------------");
+// }
+
 // =====================
 // FUNGSI AMBIL UID RFID
 // =====================
@@ -61,7 +172,7 @@ String getUID() {
 
     uidString += String(rfid.uid.uidByte[i], HEX);
 
-    if (i < rfid.uid.size - 1) {
+    if (i < rfid.uid.size - 1) { 
       uidString += ":";
     }
   }
@@ -141,6 +252,9 @@ void printEventJson(
   serializeJsonPretty(doc, Serial);
   Serial.println();
   Serial.println("-----------------------");
+
+  sendToServer(doc);
+  // publishToMQTT(doc);
 }
 
 // =====================
@@ -168,6 +282,9 @@ void printMonitoringJson(float distance) {
   serializeJsonPretty(doc, Serial);
   Serial.println();
   Serial.println("-----------------------");
+
+  sendToServer(doc);
+  // publishToMQTT(doc);
 }
 
 // =====================
@@ -282,6 +399,9 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  setup_wifi();
+  // client.setServer(MQTT_BROKER, 1883);
+
   SPI.begin();
   rfid.PCD_Init();
 
@@ -290,6 +410,11 @@ void setup() {
 }
 
 void loop() {
+  // if (!client.connected()) {
+  //   reconnect();
+  // } 
+  // client.loop();
+
   float distance = bacaJarakCM();
 
   // Cek auto check-out
