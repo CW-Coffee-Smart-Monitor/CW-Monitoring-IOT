@@ -37,11 +37,13 @@ void sendToServer(JsonDocument& doc) {
 // =====================
 // KONFIGURASI WIFI & SOCKET TCP
 // =====================
-#define WIFI_SSID "WAWAN"
-#define WIFI_PASSWORD "wawannnn"
+#define WIFI_SSID "Xiaomi 15T"
+#define WIFI_PASSWORD "1sampai7"
 
 #define SOCKET_HOST "152.42.207.49"
-#define SOCKET_PORT 1884
+#define SOCKET_PORT 9001
+
+WiFiClient socketClient;
 
 // =====================
 // SETUP KONEKSI WIFI
@@ -102,7 +104,33 @@ void testTcpConnection() {
 }
 
 // =====================
+// KONEKSI KE SOCKET SERVER
+// Praktikum 10: koneksi dibuat tetap terbuka
+// =====================
+void connectSocketServer() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Tidak bisa connect socket: WiFi belum terhubung");
+    return;
+  }
+
+  Serial.print("[Socket] Menghubungkan ke ");
+  Serial.print(SOCKET_HOST);
+  Serial.print(":");
+  Serial.println(SOCKET_PORT);
+
+  while (!socketClient.connected()) {
+    if (socketClient.connect(SOCKET_HOST, SOCKET_PORT)) {
+      Serial.println("[Socket] Terhubung ke server!");
+    } else {
+      Serial.println("[Socket] Gagal connect, coba lagi 2 detik...");
+      delay(2000);
+    }
+  }
+}
+
+// =====================
 // FUNGSI KIRIM DATA TCP SOCKET
+// Praktikum 10: kirim data tanpa menutup koneksi
 // =====================
 void sendToSocket(JsonDocument& doc) {
   if (WiFi.status() != WL_CONNECTED) {
@@ -110,34 +138,19 @@ void sendToSocket(JsonDocument& doc) {
     return;
   }
 
-  WiFiClient client;
-
-  Serial.print("Connecting to socket server ");
-  Serial.print(SOCKET_HOST);
-  Serial.print(":");
-  Serial.println(SOCKET_PORT);
-
-  if (!client.connect(SOCKET_HOST, SOCKET_PORT)) {
-    Serial.println("Koneksi ke socket server gagal");
-    client.stop();
-    return;
+  if (!socketClient.connected()) {
+    Serial.println("[WARN] Socket terputus, reconnect...");
+    socketClient.stop();
+    connectSocketServer();
   }
 
   String payload;
   serializeJson(doc, payload);
 
-  client.print(payload);
+  socketClient.println(payload);
+
   Serial.print("Socket data sent: ");
   Serial.println(payload);
-
-  client.setTimeout(3000);
-  String response = client.readStringUntil('\n');
-
-  Serial.print("Socket server response: ");
-  Serial.println(response);
-
-  client.stop();
-  Serial.println("Socket connection closed");
   Serial.println("-----------------------");
 }
 
@@ -221,6 +234,63 @@ void blinkLED(void (*colorFunc)(), int times, int delayMs) {
     delay(delayMs);
     ledOff();
     delay(delayMs);
+  }
+}
+
+// =====================
+// FUNGSI TERIMA PERINTAH DARI SERVER
+// =====================
+bool manualLedOverride = false;
+
+void handleSocketCommand(String command) {
+  command.trim();
+
+  if (command.length() == 0) {
+    return;
+  }
+
+  Serial.print("[TERIMA] Perintah dari server: ");
+  Serial.println(command);
+
+  if (command.equalsIgnoreCase("led-on") || command.equalsIgnoreCase("led-green")) {
+    manualLedOverride = true;
+    ledGreen();
+    Serial.println("[AKSI] LED GREEN / ON");
+  } else if (command.equalsIgnoreCase("led-red")) {
+    manualLedOverride = true;
+    ledRed();
+    Serial.println("[AKSI] LED RED");
+  } else if (command.equalsIgnoreCase("led-blue")) {
+    manualLedOverride = true;
+    ledBlue();
+    Serial.println("[AKSI] LED BLUE");
+  } else if (command.equalsIgnoreCase("led-yellow")) {
+    manualLedOverride = true;
+    ledYellow();
+    Serial.println("[AKSI] LED YELLOW");
+  } else if (command.equalsIgnoreCase("led-cyan")) {
+    manualLedOverride = true;
+    ledCyan();
+    Serial.println("[AKSI] LED CYAN");
+  } else if (command.equalsIgnoreCase("led-purple")) {
+    manualLedOverride = true;
+    ledPurple();
+    Serial.println("[AKSI] LED PURPLE");
+  } else if (command.equalsIgnoreCase("led-off") || command.equalsIgnoreCase("auto")) {
+    manualLedOverride = false;
+    Serial.println("[AKSI] Kembali ke mode indikator otomatis");
+  } else if (command.equalsIgnoreCase("auto")) {
+    manualLedOverride = false;
+    Serial.println("[AKSI] Mode LED otomatis aktif");
+  } else {
+    Serial.println("[WARN] Perintah tidak dikenal");
+  }
+}
+
+void readSocketCommand() {
+  while (socketClient.connected() && socketClient.available()) {
+    String command = socketClient.readStringUntil('\n');
+    handleSocketCommand(command);
   }
 }
 
@@ -495,7 +565,7 @@ void setup() {
   setup_wifi();
 
   if (WiFi.status() == WL_CONNECTED) {
-    testTcpConnection();
+    connectSocketServer();
   }
 
   SPI.begin();
@@ -510,7 +580,7 @@ void setup() {
 
   ledOff();
 
-  Serial.println("Sistem meja RFID + Ultrasonik + WiFi + TCP Socket + LED RGB siap.");
+  Serial.println("Sistem meja RFID + Ultrasonik + WiFi + TCP Socket Praktikum 10 siap.");
 }
 
 void loop() {
@@ -519,6 +589,14 @@ void loop() {
     delay(2000);
     return;
   }
+
+  if (!socketClient.connected()) {
+    Serial.println("[WARN] Koneksi ke server terputus. Mencoba reconnect...");
+    socketClient.stop();
+    connectSocketServer();
+  }
+
+  readSocketCommand();
 
   float distance = bacaJarakCM();
 
@@ -547,6 +625,11 @@ void loop() {
     lastMonitorTime = millis();
   }
 
+  // Terima perintah dari server setelah kirim data
+  readSocketCommand();
+
   // Update indikator LED
-  updateStatusLED(distance);
+  if (!manualLedOverride) {
+    updateStatusLED(distance);
+  }
 }
