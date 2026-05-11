@@ -3,7 +3,6 @@
 #include <MFRC522.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
-// #include <PubSubClient.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
@@ -36,15 +35,16 @@ void sendToServer(JsonDocument& doc) {
 }
 
 // =====================
-// KONFIGURASI WIFI & MQTT
+// KONFIGURASI WIFI & SOCKET TCP
 // =====================
-#define WIFI_SSID "JTI-POLINEMA-2G"
-#define WIFI_PASSWORD "jtifast!"
+#define WIFI_SSID "WAWAN"
+#define WIFI_PASSWORD "wawannnn"
 
-WiFiClient espClient;
+#define SOCKET_HOST "152.42.207.49"
+#define SOCKET_PORT 1884
 
 // =====================
-// SETUP KONEKSI WIFI & MQTT
+// SETUP KONEKSI WIFI
 // =====================
 void setup_wifi() {
   delay(10);
@@ -52,38 +52,94 @@ void setup_wifi() {
   Serial.print("Connecting to ");
   Serial.println(WIFI_SSID);
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int retry = 0;
 
-  while (WiFi.status() != WL_CONNECTED && retry < 20) {
+  while (WiFi.status() != WL_CONNECTED && retry < 40) {
     delay(500);
     Serial.print(".");
     retry++;
   }
 
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println();
     Serial.println("Gagal terhubung ke WiFi");
+    Serial.print("WiFi status: ");
+    Serial.println(WiFi.status());
     return;
+  }
+
+  Serial.println();
+  Serial.println("WiFi connected");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+}
+
+// =====================
+// TEST KONEKSI TCP SOCKET
+// =====================
+void testTcpConnection() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Tidak bisa test TCP: WiFi belum terhubung");
+    return;
+  }
+
+  Serial.print("Testing TCP to socket server ");
+  Serial.print(SOCKET_HOST);
+  Serial.print(":");
+  Serial.println(SOCKET_PORT);
+
+  WiFiClient testClient;
+
+  if (testClient.connect(SOCKET_HOST, SOCKET_PORT)) {
+    Serial.println("TCP connection to socket server successful");
+    testClient.stop();
   } else {
-    Serial.println("\nWiFi connected");
-    Serial.println(WiFi.localIP());
+    Serial.println("TCP connection to socket server failed");
   }
 }
 
-// void reconnect() {
-//   while (!client.connected()) {
-//     Serial.print("Attempting MQTT connection...");
-//     if (client.connect("ESP32_TABLE_12")) {
-//       Serial.println("connected");
-//     } else {
-//       Serial.print("failed, rc=");
-//       Serial.print(client.state());
-//       Serial.println(" try again in 2 seconds");
-//       delay(2000);
-//     }
-//   }
-// }
+// =====================
+// FUNGSI KIRIM DATA TCP SOCKET
+// =====================
+void sendToSocket(JsonDocument& doc) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Gagal mengirim data ke socket server: WiFi tidak terhubung");
+    return;
+  }
+
+  WiFiClient client;
+
+  Serial.print("Connecting to socket server ");
+  Serial.print(SOCKET_HOST);
+  Serial.print(":");
+  Serial.println(SOCKET_PORT);
+
+  if (!client.connect(SOCKET_HOST, SOCKET_PORT)) {
+    Serial.println("Koneksi ke socket server gagal");
+    client.stop();
+    return;
+  }
+
+  String payload;
+  serializeJson(doc, payload);
+
+  client.print(payload);
+  Serial.print("Socket data sent: ");
+  Serial.println(payload);
+
+  client.setTimeout(3000);
+  String response = client.readStringUntil('\n');
+
+  Serial.print("Socket server response: ");
+  Serial.println(response);
+
+  client.stop();
+  Serial.println("Socket connection closed");
+  Serial.println("-----------------------");
+}
 
 // =====================
 // KONFIGURASI MEJA
@@ -141,36 +197,10 @@ const unsigned long rfidCooldown = 2000;
 unsigned long lastMonitorTime = 0;
 const unsigned long monitorInterval = 2000;
 
-// // =====================
-// // FUNGSI PUBLISH MQTT
-// // =====================
-//
-// void publishToMQTT(JsonDocument& doc) {
-//   if (!client.connected()) {
-//     reconnect();
-//   }
-//
-//   client.loop();
-//
-//   String payload;
-//   serializeJson(doc, payload);
-//   bool success = client.publish("cafe/table12/events", payload.c_str());
-//
-//   if (success) {
-//     Serial.println("MQTT publish successful");
-//   } else {
-//     Serial.println("MQTT publish failed");
-//   }
-//
-//   Serial.println(payload);
-//   Serial.println("-----------------------");
-// }
-
 // ==========================================
 // FUNGSI LED RGB
 // Common Anode: LOW = nyala, HIGH = mati
 // ==========================================
-
 void setRGB(bool red, bool green, bool blue) {
   digitalWrite(LED_R_PIN, red   ? LOW : HIGH);
   digitalWrite(LED_G_PIN, green ? LOW : HIGH);
@@ -182,7 +212,7 @@ void ledRed()    { setRGB(false, true,  true);  }
 void ledGreen()  { setRGB(true,  false, true);  }
 void ledBlue()   { setRGB(true,  true,  false); }
 void ledYellow() { setRGB(false, false, true);  }
-void ledCyan()   { setRGB(true,  false, false); } 
+void ledCyan()   { setRGB(true,  false, false); }
 void ledPurple() { setRGB(false, true,  false); }
 
 void blinkLED(void (*colorFunc)(), int times, int delayMs) {
@@ -306,8 +336,8 @@ void printEventJson(
   Serial.println();
   Serial.println("-----------------------");
 
-  sendToServer(doc);
-  // publishToMQTT(doc);
+  // sendToServer(doc);
+  sendToSocket(doc);
 }
 
 // =====================
@@ -336,8 +366,8 @@ void printMonitoringJson(float distance) {
   Serial.println();
   Serial.println("-----------------------");
 
-  sendToServer(doc);
-  // publishToMQTT(doc);
+  // sendToServer(doc);
+  sendToSocket(doc);
 }
 
 // =====================
@@ -463,7 +493,10 @@ void setup() {
   delay(1000);
 
   setup_wifi();
-  // client.setServer(MQTT_BROKER, 1883);
+
+  if (WiFi.status() == WL_CONNECTED) {
+    testTcpConnection();
+  }
 
   SPI.begin();
   rfid.PCD_Init();
@@ -477,14 +510,15 @@ void setup() {
 
   ledOff();
 
-  Serial.println("Sistem meja RFID + Ultrasonik + WiFi + Webhook + LED RGB siap.");
+  Serial.println("Sistem meja RFID + Ultrasonik + WiFi + TCP Socket + LED RGB siap.");
 }
 
 void loop() {
-  // if (!client.connected()) {
-  //   reconnect();
-  // }
-  // client.loop();
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi belum terhubung, skip pengiriman data...");
+    delay(2000);
+    return;
+  }
 
   float distance = bacaJarakCM();
 
