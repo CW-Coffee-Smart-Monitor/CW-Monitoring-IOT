@@ -37,8 +37,8 @@ void sendToServer(JsonDocument& doc) {
 // =====================
 // KONFIGURASI WIFI & SOCKET TCP
 // =====================
-#define WIFI_SSID "Xiaomi 15T"
-#define WIFI_PASSWORD "1sampai7"
+#define WIFI_SSID "WAWAN"
+#define WIFI_PASSWORD "wawannnn"
 
 #define SOCKET_HOST "152.42.207.49"
 #define SOCKET_PORT 9001
@@ -77,6 +77,25 @@ void setup_wifi() {
 
   Serial.println();
   Serial.println("WiFi connected");
+  WiFiClient test;
+
+Serial.println("=== TEST TCP ===");
+
+if (test.connect("152.42.207.49", 9002)) {
+  Serial.println("TCP 9002 OK");
+  test.stop();
+} else {
+  Serial.println("TCP 9002 FAILED");
+}
+
+if (test.connect("152.42.207.49", 9001)) {
+  Serial.println("TCP 9001 OK");
+  test.stop();
+} else {
+  Serial.println("TCP 9001 FAILED");
+}
+
+  Serial.println("");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 }
@@ -232,6 +251,7 @@ void ledYellow() { setRGB(false, false, true);  }
 void ledCyan()   { setRGB(true,  false, false); }
 void ledPurple() { setRGB(false, true,  false); }
 
+
 void blinkLED(void (*colorFunc)(), int times, int delayMs) {
   for (int i = 0; i < times; i++) {
     colorFunc();
@@ -306,8 +326,13 @@ void readSocketCommand() {
 
 void fetchTableStatus() {
 
-  if (WiFi.status() != WL_CONNECTED)
+  Serial.println();
+  Serial.println("[DEBUG] fetchTableStatus dipanggil");
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[DEBUG] WiFi tidak terhubung");
     return;
+  }
 
   HTTPClient http;
 
@@ -316,16 +341,31 @@ void fetchTableStatus() {
       + "/api/status/"
       + String(TABLE_ID);
 
+  Serial.print("[DEBUG] URL = ");
+  Serial.println(url);
+
   http.begin(url);
 
   int code = http.GET();
 
+  Serial.print("[DEBUG] HTTP Code = ");
+  Serial.println(code);
+
+  if (code < 0) {
+    Serial.print("[DEBUG] Error = ");
+    Serial.println(http.errorToString(code));
+  }
+
   if (code != 200) {
+    Serial.println("[DEBUG] Request gagal");
     http.end();
     return;
   }
 
   String payload = http.getString();
+
+  Serial.println("[DEBUG] Payload API:");
+  Serial.println(payload);
 
   StaticJsonDocument<2048> doc;
 
@@ -333,7 +373,8 @@ void fetchTableStatus() {
       deserializeJson(doc, payload);
 
   if (err) {
-    Serial.println("[API] JSON parse gagal");
+    Serial.print("[DEBUG] JSON Parse Error: ");
+    Serial.println(err.c_str());
     http.end();
     return;
   }
@@ -348,6 +389,7 @@ void fetchTableStatus() {
 
   Serial.println();
   Serial.println("===== STATUS API =====");
+
   Serial.print("isCheckedIn: ");
   Serial.println(isCheckedIn);
 
@@ -355,7 +397,29 @@ void fetchTableStatus() {
   Serial.println(isReserved);
 
   if (reservationExists) {
+
     Serial.println("Reservation ditemukan");
+
+    if (!doc["reservation"]["status"].isNull()) {
+      Serial.print("Status Reservation: ");
+      Serial.println(
+          doc["reservation"]["status"]
+          .as<const char*>()
+      );
+    }
+
+    if (!doc["reservation"]["tableName"].isNull()) {
+      Serial.print("Table: ");
+      Serial.println(
+          doc["reservation"]["tableName"]
+          .as<const char*>()
+      );
+    }
+
+  } else {
+
+    Serial.println("Tidak ada reservation");
+
   }
 
   Serial.println("======================");
@@ -664,6 +728,39 @@ void setup() {
     connectSocketServer();
   }
 
+  // =====================
+  // TEST HTTP API
+  // =====================
+  HTTPClient http;
+
+  Serial.println("=== TEST API ===");
+
+  bool ok = http.begin("http://152.42.207.49:9002/api/status/12");
+
+  Serial.print("BEGIN=");
+  Serial.println(ok);
+
+  if (ok) {
+    int code = http.GET();
+
+    Serial.print("CODE=");
+    Serial.println(code);
+
+    if (code > 0) {
+      Serial.println(http.getString());
+    } else {
+      Serial.print("ERROR=");
+      Serial.println(http.errorToString(code));
+    }
+
+    http.end();
+  }
+
+  Serial.println("=== END TEST API ===");
+
+  // =====================
+  // LANJUT SETUP NORMAL
+  // =====================
   SPI.begin();
   rfid.PCD_Init();
 
@@ -676,7 +773,7 @@ void setup() {
 
   ledOff();
 
-  Serial.println("Sistem meja RFID + Ultrasonik + WiFi + TCP Socket Praktikum 10 siap.");
+  Serial.println("Sistem siap.");
 }
 
 void loop() {
