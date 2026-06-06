@@ -215,7 +215,6 @@ MFRC522 rfid(SS_PIN, RST_PIN);
 
 // UID user yang sedang check-in
 String currentUID = "";
-String allowedUID = "5A:5F:B5:02";
 
 // Status meja
 bool isCheckedIn = false;
@@ -300,7 +299,7 @@ void handleSocketCommand(String command) {
     manualLedOverride = true;
     ledPurple();
     Serial.println("[AKSI] LED PURPLE");
-  } else if (command.equalsIgnoreCase("led-off") || command.equalsIgnoreCase("auto")) {
+  } else if (command.equalsIgnoreCase("led-off")) {
     manualLedOverride = false;
     Serial.println("[AKSI] Kembali ke mode indikator otomatis");
   } else if (command.equalsIgnoreCase("auto")) {
@@ -635,20 +634,81 @@ void handleAutoCheckout(float distance) {
   }
 }
 
+bool validateRFID(String uid)
+{
+    if (WiFi.status() != WL_CONNECTED) {
+        return false;
+    }
+
+    HTTPClient http;
+
+    String url =
+        String(API_BASE_URL) +
+        "/api/rfid/validate/" +
+        String(TABLE_ID) +
+        "/" +
+        uid;
+
+    Serial.print("[RFID VALIDATE] ");
+    Serial.println(url);
+
+    http.begin(url);
+
+    int code = http.GET();
+
+    if (code != 200) {
+
+        Serial.print("[RFID VALIDATE] HTTP ERROR: ");
+        Serial.println(code);
+
+        http.end();
+        return false;
+    }
+
+    String payload = http.getString();
+
+    Serial.print("[RFID VALIDATE] RESPONSE = ");
+    Serial.println(payload);
+
+    StaticJsonDocument<256> doc;
+
+    DeserializationError err =
+        deserializeJson(doc, payload);
+
+    if (err) {
+
+        Serial.print("[RFID VALIDATE] JSON ERROR: ");
+        Serial.println(err.c_str());
+
+        http.end();
+        return false;
+    }
+
+    bool valid =
+        doc["valid"] | false;
+
+    Serial.print("[RFID VALIDATE] RESULT = ");
+    Serial.println(valid);
+
+    http.end();
+
+    return valid;
+}
+
 // =====================
 // HANDLE TAP RFID
 // =====================
 void handleRFIDTap(String tappedUID, float distance) {
 
-  if (tappedUID != allowedUID) {
+  if (!validateRFID(tappedUID)) {
 
     Serial.println("AKSES DITOLAK");
 
     printEventJson(
-        "CHECK_IN_REJECTED",
-        tappedUID,
-        distance,
-        "UID_NOT_ALLOWED"
+      "CHECK_IN_REJECTED",
+      tappedUID,
+      distance,
+      "UID_NOT_ALLOWED"
     );
 
     blinkLED(ledRed, 3, 150);
