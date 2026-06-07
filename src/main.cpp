@@ -16,8 +16,7 @@ void sendToServer(JsonDocument& doc) {
     client.setInsecure(); // Disable certificate validation (not recommended for production)
 
     HTTPClient http;
-    http.begin(client, "https://cw-monitoring.vercel.app/api/webhook");
-
+    http.begin(client, "https://fasilita.my.id/api/webhook");
     http.addHeader("Content-Type", "application/json");
 
     String jsonString;
