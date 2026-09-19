@@ -1,12 +1,12 @@
 #include <Arduino.h>
-#include <SPI.h>
 #include <MFRC522.h>
+#include <SPI.h>
 
+#include "CommandHandler.h"
 #include "Config.h"
 #include "HardwareDrivers.h"
 #include "NetworkManager.h"
 #include "TableLogic.h"
-#include "CommandHandler.h"
 
 // ==========================================
 // HARDWARE & NETWORK MODULE INSTANCES
@@ -113,41 +113,36 @@ void handleRFIDTapEvent(const String& tappedUID, float distance) {
     switch (res.type) {
         case TapResultType::REJECTED_UID_NOT_ALLOWED:
             Serial.println("AKSES DITOLAK");
-            net.sendEvent(tableManager.getTableId(), "CHECK_IN_REJECTED", tappedUID,
-                          tableManager.isCheckedIn(), tableManager.isReserved(),
-                          tableManager.isOccupied(distance), distance, "UID_NOT_ALLOWED");
+            net.sendEvent(tableManager.getTableId(), "CHECK_IN_REJECTED", tappedUID, tableManager.isCheckedIn(),
+                          tableManager.isReserved(), tableManager.isOccupied(distance), distance, "UID_NOT_ALLOWED");
             led.blink(&LedIndicator::red, 3, 150);
             break;
 
         case TapResultType::CHECK_IN_SUCCESS:
             Serial.println("CHECK IN:");
-            net.sendEvent(tableManager.getTableId(), "CHECK_IN", String(res.uid.c_str()),
-                          tableManager.isCheckedIn(), tableManager.isReserved(),
-                          tableManager.isOccupied(distance), distance);
+            net.sendEvent(tableManager.getTableId(), "CHECK_IN", String(res.uid.c_str()), tableManager.isCheckedIn(),
+                          tableManager.isReserved(), tableManager.isOccupied(distance), distance);
             led.blink(&LedIndicator::green, 2, 150);
             break;
 
         case TapResultType::CHECK_IN_REJECTED_NOT_OCCUPIED:
             Serial.println("CHECK IN DITOLAK:");
-            net.sendEvent(tableManager.getTableId(), "CHECK_IN_REJECTED", tappedUID,
-                          tableManager.isCheckedIn(), tableManager.isReserved(),
-                          tableManager.isOccupied(distance), distance, "NOT_OCCUPIED");
+            net.sendEvent(tableManager.getTableId(), "CHECK_IN_REJECTED", tappedUID, tableManager.isCheckedIn(),
+                          tableManager.isReserved(), tableManager.isOccupied(distance), distance, "NOT_OCCUPIED");
             led.blink(&LedIndicator::red, 3, 150);
             break;
 
         case TapResultType::CHECK_OUT_SUCCESS:
             Serial.println("CHECK OUT:");
-            net.sendEvent(tableManager.getTableId(), "CHECK_OUT", String(res.uid.c_str()),
-                          tableManager.isCheckedIn(), tableManager.isReserved(),
-                          tableManager.isOccupied(distance), distance);
+            net.sendEvent(tableManager.getTableId(), "CHECK_OUT", String(res.uid.c_str()), tableManager.isCheckedIn(),
+                          tableManager.isReserved(), tableManager.isOccupied(distance), distance);
             led.blink(&LedIndicator::blue, 2, 150);
             break;
 
         case TapResultType::REJECTED_ALREADY_USED_BY_OTHER:
             Serial.println("AKSES DITOLAK:");
-            net.sendEvent(tableManager.getTableId(), "CHECK_IN_REJECTED", tappedUID,
-                          tableManager.isCheckedIn(), tableManager.isReserved(),
-                          tableManager.isOccupied(distance), distance,
+            net.sendEvent(tableManager.getTableId(), "CHECK_IN_REJECTED", tappedUID, tableManager.isCheckedIn(),
+                          tableManager.isReserved(), tableManager.isOccupied(distance), distance,
                           "TABLE_ALREADY_USED_BY_OTHER_UID", String(res.activeUID.c_str()));
             led.blink(&LedIndicator::red, 3, 150);
             break;
@@ -166,8 +161,8 @@ void handleAutoCheckoutEvent(float distance) {
     } else if (result == AutoCheckoutResult::TIMEOUT_TRIGGERED) {
         Serial.println("AUTO CHECK OUT:");
         net.sendEvent(tableManager.getTableId(), "AUTO_CHECK_OUT", String(checkedOutUID.c_str()),
-                      tableManager.isCheckedIn(), tableManager.isReserved(),
-                      tableManager.isOccupied(distance), distance, "EMPTY_TIMEOUT");
+                      tableManager.isCheckedIn(), tableManager.isReserved(), tableManager.isOccupied(distance),
+                      distance, "EMPTY_TIMEOUT");
         led.blink(&LedIndicator::purple, 3, 150);
     }
 }
@@ -241,19 +236,14 @@ void loop() {
 
     // 6. Kirim data monitoring berkala
     if (millis() - lastMonitorTime >= MONITOR_INTERVAL_MS) {
-        net.sendMonitoring(tableManager.getTableId(),
-                           String(tableManager.getCurrentUID().c_str()),
-                           tableManager.isCheckedIn(),
-                           tableManager.isReserved(),
-                           tableManager.isOccupied(distance),
+        net.sendMonitoring(tableManager.getTableId(), String(tableManager.getCurrentUID().c_str()),
+                           tableManager.isCheckedIn(), tableManager.isReserved(), tableManager.isOccupied(distance),
                            distance);
         lastMonitorTime = millis();
     }
 
     // 7. Update status LED (jika tidak sedang di-override manual)
     if (!manualLedOverride) {
-        led.updateStatus(tableManager.isCheckedIn(),
-                         tableManager.isReserved(),
-                         tableManager.isOccupied(distance));
+        led.updateStatus(tableManager.isCheckedIn(), tableManager.isReserved(), tableManager.isOccupied(distance));
     }
 }

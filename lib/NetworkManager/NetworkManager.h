@@ -2,10 +2,10 @@
 #define NETWORK_MANAGER_H
 
 #include <Arduino.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
 
 struct TableStatusResponse {
     bool success;
@@ -17,8 +17,7 @@ struct TableStatusResponse {
 
 class NetworkManager {
 public:
-    NetworkManager(const char* ssid, const char* password,
-                   const char* socketHost, uint16_t socketPort,
+    NetworkManager(const char* ssid, const char* password, const char* socketHost, uint16_t socketPort,
                    const char* apiBaseUrl, const char* webhookUrl);
 
     void setupWiFi();
@@ -35,12 +34,10 @@ public:
     bool validateRFID(int tableId, const String& uid);
     TableStatusResponse fetchTableStatus(int tableId);
 
-    void sendEvent(int tableId, const String& eventType, const String& uid,
-                   bool isCheckedIn, bool isReserved, bool isOccupied,
-                   float distance, const String& reason = "", const String& activeUID = "");
+    void sendEvent(int tableId, const String& eventType, const String& uid, bool isCheckedIn, bool isReserved,
+                   bool isOccupied, float distance, const String& reason = "", const String& activeUID = "");
 
-    void sendMonitoring(int tableId, const String& uid,
-                        bool isCheckedIn, bool isReserved, bool isOccupied,
+    void sendMonitoring(int tableId, const String& uid, bool isCheckedIn, bool isReserved, bool isOccupied,
                         float distance);
 
 private:
@@ -54,4 +51,4 @@ private:
     WiFiClient socketClient_;
 };
 
-#endif // NETWORK_MANAGER_H
+#endif  // NETWORK_MANAGER_H

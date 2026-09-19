@@ -1,4 +1,5 @@
 #include <unity.h>
+
 #include "TableLogic.h"
 
 void setUp(void) {
@@ -16,7 +17,7 @@ void test_occupancy_detection(void) {
     TEST_ASSERT_TRUE(table.isOccupied(19.9f));
     TEST_ASSERT_FALSE(table.isOccupied(20.0f));
     TEST_ASSERT_FALSE(table.isOccupied(35.0f));
-    TEST_ASSERT_FALSE(table.isOccupied(-1.0f)); // sensor error / out of range
+    TEST_ASSERT_FALSE(table.isOccupied(-1.0f));  // sensor error / out of range
 }
 
 void test_checkin_success_when_occupied(void) {
@@ -82,7 +83,7 @@ void test_reject_different_card_when_already_checked_in(void) {
 }
 
 void test_auto_checkout_timeout_trigger(void) {
-    TableManager table(12, 20.0f, 15000); // 15s timeout
+    TableManager table(12, 20.0f, 15000);  // 15s timeout
     table.handleRFIDTap("USER_01", 10.0f, true);
     table.resetOccupiedTimer(1000);
 
@@ -110,7 +111,7 @@ void test_auto_checkout_timeout_trigger(void) {
     TEST_ASSERT_FALSE(table.isCheckedIn());
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
     UNITY_BEGIN();

@@ -1,4 +1,5 @@
 #include <unity.h>
+
 #include "CommandHandler.h"
 
 void setUp(void) {}
@@ -66,7 +67,7 @@ void test_unknown_and_empty_commands(void) {
     TEST_ASSERT_FALSE(unknown.modifiesLedOverride);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
     UNITY_BEGIN();

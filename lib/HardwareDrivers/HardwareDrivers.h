@@ -39,4 +39,4 @@ private:
     uint8_t echoPin_;
 };
 
-#endif // HARDWARE_DRIVERS_H
+#endif  // HARDWARE_DRIVERS_H

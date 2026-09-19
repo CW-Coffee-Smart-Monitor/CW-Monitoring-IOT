@@ -22,16 +22,14 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Tools
         run: |
           python -m pip install --upgrade pip
-          pip install .
+          pip install . clang-format
 
       - name: Run Clang-Format Style Check
-        uses: jidicula/clang-format-action@v4.14.0
-        with:
-          clang-format-version: '18'
-          check-path: 'src,include,lib,test'
+        run: |
+          clang-format --dry-run --Werror src/*.cpp include/*.h lib/*/*.h lib/*/*.cpp test/*/*.cpp
 
       - name: Run PlatformIO Static Analysis (cppcheck & clang-tidy)
         run: |

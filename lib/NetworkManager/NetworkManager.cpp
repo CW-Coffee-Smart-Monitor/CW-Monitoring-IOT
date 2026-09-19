@@ -1,11 +1,13 @@
 #include "NetworkManager.h"
 
-NetworkManager::NetworkManager(const char* ssid, const char* password,
-                               const char* socketHost, uint16_t socketPort,
+NetworkManager::NetworkManager(const char* ssid, const char* password, const char* socketHost, uint16_t socketPort,
                                const char* apiBaseUrl, const char* webhookUrl)
-    : ssid_(ssid), password_(password),
-      socketHost_(socketHost), socketPort_(socketPort),
-      apiBaseUrl_(apiBaseUrl), webhookUrl_(webhookUrl) {}
+    : ssid_(ssid),
+      password_(password),
+      socketHost_(socketHost),
+      socketPort_(socketPort),
+      apiBaseUrl_(apiBaseUrl),
+      webhookUrl_(webhookUrl) {}
 
 void NetworkManager::setupWiFi() {
     delay(10);
@@ -227,9 +229,9 @@ TableStatusResponse NetworkManager::fetchTableStatus(int tableId) {
     return response;
 }
 
-void NetworkManager::sendEvent(int tableId, const String& eventType, const String& uid,
-                               bool isCheckedIn, bool isReserved, bool isOccupied,
-                               float distance, const String& reason, const String& activeUID) {
+void NetworkManager::sendEvent(int tableId, const String& eventType, const String& uid, bool isCheckedIn,
+                               bool isReserved, bool isOccupied, float distance, const String& reason,
+                               const String& activeUID) {
     JsonDocument doc;
 
     doc["tableId"] = tableId;
@@ -262,8 +264,7 @@ void NetworkManager::sendEvent(int tableId, const String& eventType, const Strin
     sendSocketJson(doc);
 }
 
-void NetworkManager::sendMonitoring(int tableId, const String& uid,
-                                    bool isCheckedIn, bool isReserved, bool isOccupied,
+void NetworkManager::sendMonitoring(int tableId, const String& uid, bool isCheckedIn, bool isReserved, bool isOccupied,
                                     float distance) {
     JsonDocument doc;
 
