@@ -67,9 +67,7 @@ void test_unknown_and_empty_commands(void) {
     TEST_ASSERT_FALSE(unknown.modifiesLedOverride);
 }
 
-int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+int runUnityTests(void) {
     UNITY_BEGIN();
     RUN_TEST(test_trim_and_case_insensitivity);
     RUN_TEST(test_led_color_commands);
@@ -78,3 +76,19 @@ int main(int argc, char** argv) {
     RUN_TEST(test_unknown_and_empty_commands);
     return UNITY_END();
 }
+
+#ifdef ARDUINO
+#include <Arduino.h>
+void setup() {
+    delay(2000);  // Allow serial and USB connection to stabilize
+    runUnityTests();
+}
+
+void loop() {}
+#else
+int main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+    return runUnityTests();
+}
+#endif
