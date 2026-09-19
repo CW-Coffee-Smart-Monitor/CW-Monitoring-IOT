@@ -5,6 +5,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <TableLogic.h>
+#include <CommandHandler.h>
 
 // =====================
 // KIRIM WEBHOOK
@@ -187,6 +189,8 @@ void sendToSocket(JsonDocument& doc) {
 // Kalau final, bisa ubah ke 15 menit: 15 * 60 * 1000
 #define AUTO_CHECKOUT_TIMEOUT 15000
 
+TableManager tableManager(TABLE_ID, OCCUPIED_DISTANCE_CM, AUTO_CHECKOUT_TIMEOUT);
+
 // =====================
 // PIN RFID RC522
 // =====================
@@ -274,44 +278,57 @@ void handleSocketCommand(String command) {
   Serial.print("[TERIMA] Perintah dari server: ");
   Serial.println(command);
 
-  if (command.equalsIgnoreCase("led-on") || command.equalsIgnoreCase("led-green")) {
-    manualLedOverride = true;
-    ledGreen();
-    Serial.println("[AKSI] LED GREEN / ON");
-  } else if (command.equalsIgnoreCase("led-red")) {
-    manualLedOverride = true;
-    ledRed();
-    Serial.println("[AKSI] LED RED");
-  } else if (command.equalsIgnoreCase("led-blue")) {
-    manualLedOverride = true;
-    ledBlue();
-    Serial.println("[AKSI] LED BLUE");
-  } else if (command.equalsIgnoreCase("led-yellow")) {
-    manualLedOverride = true;
-    ledYellow();
-    Serial.println("[AKSI] LED YELLOW");
-  } else if (command.equalsIgnoreCase("led-cyan")) {
-    manualLedOverride = true;
-    ledCyan();
-    Serial.println("[AKSI] LED CYAN");
-  } else if (command.equalsIgnoreCase("led-purple")) {
-    manualLedOverride = true;
-    ledPurple();
-    Serial.println("[AKSI] LED PURPLE");
-  } else if (command.equalsIgnoreCase("led-off")) {
-    manualLedOverride = false;
-    Serial.println("[AKSI] Kembali ke mode indikator otomatis");
-  } else if (command.equalsIgnoreCase("auto")) {
-    manualLedOverride = false;
-    Serial.println("[AKSI] Mode LED otomatis aktif");
-  } else if (command.equalsIgnoreCase("reserve")) {
-    isReserved = true;
-    Serial.println("[AKSI] Meja direservasi");
-  } else if (command.equalsIgnoreCase("cancel-reservation")) {
-    isReserved = false;
-    Serial.println("[AKSI] Reservasi dibatalkan");
-  } else {
-    Serial.println("[WARN] Perintah tidak dikenal");
+  CommandResult res = CommandHandler::parse(command.c_str());
+
+  if (res.modifiesLedOverride) {
+    manualLedOverride = res.manualLedOverride;
+  }
+
+  if (res.modifiesReservation) {
+    isReserved = res.isReserved;
+    tableManager.setReserved(res.isReserved);
+  }
+
+  switch (res.type) {
+    case CommandType::LED_GREEN:
+      ledGreen();
+      Serial.println("[AKSI] LED GREEN / ON");
+      break;
+    case CommandType::LED_RED:
+      ledRed();
+      Serial.println("[AKSI] LED RED");
+      break;
+    case CommandType::LED_BLUE:
+      ledBlue();
+      Serial.println("[AKSI] LED BLUE");
+      break;
+    case CommandType::LED_YELLOW:
+      ledYellow();
+      Serial.println("[AKSI] LED YELLOW");
+      break;
+    case CommandType::LED_CYAN:
+      ledCyan();
+      Serial.println("[AKSI] LED CYAN");
+      break;
+    case CommandType::LED_PURPLE:
+      ledPurple();
+      Serial.println("[AKSI] LED PURPLE");
+      break;
+    case CommandType::LED_OFF:
+      Serial.println("[AKSI] Kembali ke mode indikator otomatis");
+      break;
+    case CommandType::MODE_AUTO:
+      Serial.println("[AKSI] Mode LED otomatis aktif");
+      break;
+    case CommandType::RESERVE:
+      Serial.println("[AKSI] Meja direservasi");
+      break;
+    case CommandType::CANCEL_RESERVATION:
+      Serial.println("[AKSI] Reservasi dibatalkan");
+      break;
+    default:
+      Serial.println("[WARN] Perintah tidak dikenal");
+      break;
   }
 }
 
@@ -384,6 +401,9 @@ void fetchTableStatus() {
       !doc["reservation"].isNull();
 
   isReserved = reservationExists;
+
+  tableManager.setCheckedIn(isCheckedIn);
+  tableManager.setReserved(isReserved);
 
   Serial.println();
   Serial.println("===== STATUS API =====");
@@ -472,11 +492,7 @@ float bacaJarakCM() {
 // FUNGSI CEK OCCUPIED
 // =====================
 bool cekOccupied(float distance) {
-  if (distance > 0 && distance < OCCUPIED_DISTANCE_CM) {
-    return true;
-  }
-
-  return false;
+  return tableManager.isOccupied(distance);
 }
 
 // =====================
@@ -588,46 +604,17 @@ void printMonitoringJson(float distance) {
 // AUTO CHECK OUT
 // =====================
 void handleAutoCheckout(float distance) {
-  bool isOccupied = cekOccupied(distance);
+  std::string checkedOutUID;
+  AutoCheckoutResult result = tableManager.updateAutoCheckout(distance, millis(), checkedOutUID);
 
-  static unsigned long lastOccupiedTime = 0;
-  static bool autoCheckoutWarningPrinted = false;
-
-  // Kalau belum ada yang check-in, reset data
-  if (!isCheckedIn) {
-    lastOccupiedTime = millis();
-    autoCheckoutWarningPrinted = false;
-    return;
-  }
-
-  // Kalau meja masih terdeteksi ada orang
-  if (isOccupied) {
-    lastOccupiedTime = millis();
-    autoCheckoutWarningPrinted = false;
-    return;
-  }
-
-  // Kalau sudah check-in tapi sensor membaca kosong
-  unsigned long emptyDuration = millis() - lastOccupiedTime;
-
-  // Print peringatan sekali saja
-  if (!autoCheckoutWarningPrinted) {
+  if (result == AutoCheckoutResult::WARNING_TRIGGERED) {
     Serial.println("Meja kosong terdeteksi, menunggu AUTO_CHECK_OUT...");
-    autoCheckoutWarningPrinted = true;
-  }
-
-  // Kalau kosong terus sampai timeout
-  if (emptyDuration >= AUTO_CHECKOUT_TIMEOUT) {
-    String oldUID = currentUID;
-
+  } else if (result == AutoCheckoutResult::TIMEOUT_TRIGGERED) {
     isCheckedIn = false;
     currentUID = "";
 
-    autoCheckoutWarningPrinted = false;
-    lastOccupiedTime = millis();
-
     Serial.println("AUTO CHECK OUT:");
-    printEventJson("AUTO_CHECK_OUT", oldUID, distance, "EMPTY_TIMEOUT");
+    printEventJson("AUTO_CHECK_OUT", String(checkedOutUID.c_str()), distance, "EMPTY_TIMEOUT");
 
     blinkLED(ledPurple, 3, 150);
   }
@@ -698,41 +685,33 @@ bool validateRFID(String uid)
 // HANDLE TAP RFID
 // =====================
 void handleRFIDTap(String tappedUID, float distance) {
+  bool isAllowed = validateRFID(tappedUID);
 
-  if (!validateRFID(tappedUID)) {
+  TapResult res = tableManager.handleRFIDTap(tappedUID.c_str(), distance, isAllowed);
 
-    Serial.println("AKSES DITOLAK");
+  switch (res.type) {
+    case TapResultType::REJECTED_UID_NOT_ALLOWED:
+      Serial.println("AKSES DITOLAK");
+      printEventJson(
+        "CHECK_IN_REJECTED",
+        tappedUID,
+        distance,
+        "UID_NOT_ALLOWED"
+      );
+      blinkLED(ledRed, 3, 150);
+      break;
 
-    printEventJson(
-      "CHECK_IN_REJECTED",
-      tappedUID,
-      distance,
-      "UID_NOT_ALLOWED"
-    );
-
-    blinkLED(ledRed, 3, 150);
-    return;
-  }
-
-  bool isOccupied = cekOccupied(distance);
-
-  // Belum ada yang check-in
-  if (!isCheckedIn) {
-    if (isOccupied) {
-
+    case TapResultType::CHECK_IN_SUCCESS:
       currentUID = tappedUID;
       isCheckedIn = true;
-
-      // otomatis hapus status reservasi
       isReserved = false;
 
       Serial.println("CHECK IN:");
       printEventJson("CHECK_IN", currentUID, distance);
-
       blinkLED(ledGreen, 2, 150);
+      break;
 
-    } else {
-
+    case TapResultType::CHECK_IN_REJECTED_NOT_OCCUPIED:
       Serial.println("CHECK IN DITOLAK:");
       printEventJson(
         "CHECK_IN_REJECTED",
@@ -740,41 +719,32 @@ void handleRFIDTap(String tappedUID, float distance) {
         distance,
         "NOT_OCCUPIED"
       );
-
       blinkLED(ledRed, 3, 150);
+      break;
+
+    case TapResultType::CHECK_OUT_SUCCESS: {
+      String oldUID = String(res.uid.c_str());
+      isCheckedIn = false;
+      currentUID = "";
+
+      Serial.println("CHECK OUT:");
+      printEventJson("CHECK_OUT", oldUID, distance);
+      blinkLED(ledBlue, 2, 150);
+      break;
     }
 
-    return;
+    case TapResultType::REJECTED_ALREADY_USED_BY_OTHER:
+      Serial.println("AKSES DITOLAK:");
+      printEventJson(
+        "CHECK_IN_REJECTED",
+        tappedUID,
+        distance,
+        "TABLE_ALREADY_USED_BY_OTHER_UID",
+        currentUID
+      );
+      blinkLED(ledRed, 3, 150);
+      break;
   }
-
-  // kartu yang sama = checkout
-  if (tappedUID == currentUID) {
-
-    String oldUID = currentUID;
-
-    isCheckedIn = false;
-    currentUID = "";
-
-    Serial.println("CHECK OUT:");
-    printEventJson("CHECK_OUT", oldUID, distance);
-
-    blinkLED(ledBlue, 2, 150);
-
-    return;
-  }
-
-  // kartu lain
-  Serial.println("AKSES DITOLAK:");
-
-  printEventJson(
-    "CHECK_IN_REJECTED",
-    tappedUID,
-    distance,
-    "TABLE_ALREADY_USED_BY_OTHER_UID",
-    currentUID
-  );
-
-  blinkLED(ledRed, 3, 150);
 }
 
 void setup() {

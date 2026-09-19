@@ -1,11 +1,30 @@
+PlatformIO Test Directory
+=========================
 
-This directory is intended for PlatformIO Test Runner and project tests.
+This directory contains automated unit tests executed via the PlatformIO Test Runner and Unity testing framework.
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+Structure
+---------
+test/
+├── test_table_logic/
+│   └── test_table_logic.cpp     # Unit tests for occupancy, RFID authorization, and auto-checkout timeout logic
+└── test_command_handler/
+    └── test_command_handler.cpp # Unit tests for socket command parsing and mode transitions
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+How to Run Tests
+----------------
+Execute the tests locally on your machine:
+
+    pio test -e native
+
+Or on Windows PowerShell (using the PlatformIO virtual environment):
+
+    & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" test -e native
+
+To run a specific test suite:
+
+    pio test -e native -f test_table_logic
+    pio test -e native -f test_command_handler
+
+For more information, see:
+https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
