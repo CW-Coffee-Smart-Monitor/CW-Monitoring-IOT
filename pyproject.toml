@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cw-monitoring-iot"
+version = "0.1.0"
+description = "Smart Coworking Space / Desk Monitoring System powered by ESP32 and PlatformIO"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "platformio>=6.1.16",
+]
