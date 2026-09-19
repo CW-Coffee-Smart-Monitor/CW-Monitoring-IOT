@@ -11,3 +11,9 @@ requires-python = ">=3.11"
 dependencies = [
     "platformio>=6.1.16",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=3.7.0",
+    "clang-format>=18.0.0",
+]

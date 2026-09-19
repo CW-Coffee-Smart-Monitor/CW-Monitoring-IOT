@@ -67,6 +67,8 @@ void test_unknown_and_empty_commands(void) {
 }
 
 int main(int argc, char **argv) {
+    (void)argc;
+    (void)argv;
     UNITY_BEGIN();
     RUN_TEST(test_trim_and_case_insensitivity);
     RUN_TEST(test_led_color_commands);

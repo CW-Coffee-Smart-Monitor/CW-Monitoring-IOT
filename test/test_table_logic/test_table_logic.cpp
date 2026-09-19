@@ -111,6 +111,8 @@ void test_auto_checkout_timeout_trigger(void) {
 }
 
 int main(int argc, char **argv) {
+    (void)argc;
+    (void)argv;
     UNITY_BEGIN();
     RUN_TEST(test_occupancy_detection);
     RUN_TEST(test_checkin_success_when_occupied);
