@@ -111,9 +111,7 @@ void test_auto_checkout_timeout_trigger(void) {
     TEST_ASSERT_FALSE(table.isCheckedIn());
 }
 
-int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+int runUnityTests(void) {
     UNITY_BEGIN();
     RUN_TEST(test_occupancy_detection);
     RUN_TEST(test_checkin_success_when_occupied);
@@ -124,3 +122,19 @@ int main(int argc, char** argv) {
     RUN_TEST(test_auto_checkout_timeout_trigger);
     return UNITY_END();
 }
+
+#ifdef ARDUINO
+#include <Arduino.h>
+void setup() {
+    delay(2000);  // Allow serial and USB connection to stabilize
+    runUnityTests();
+}
+
+void loop() {}
+#else
+int main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+    return runUnityTests();
+}
+#endif
