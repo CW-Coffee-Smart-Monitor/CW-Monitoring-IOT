@@ -1,5 +1,7 @@
 # CW-Monitoring-IOT
 
+[![PlatformIO CI](https://github.com/FarrelAD/CW-Monitoring-IOT/actions/workflows/ci.yml/badge.svg)](https://github.com/FarrelAD/CW-Monitoring-IOT/actions/workflows/ci.yml)
+
 Smart Coworking Space / Desk Monitoring System powered by ESP32, RFID (MFRC522), HC-SR04 Ultrasonic Distance Sensor, RGB LED indicators, and Real-Time TCP Socket / HTTP Webhooks.
 
 ---
