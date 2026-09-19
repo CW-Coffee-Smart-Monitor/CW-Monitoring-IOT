@@ -15,18 +15,32 @@ void LedIndicator::begin() {
 }
 
 void LedIndicator::setRGB(bool red, bool green, bool blue) {
-    digitalWrite(rPin_, red   ? LOW : HIGH);
+    digitalWrite(rPin_, red ? LOW : HIGH);
     digitalWrite(gPin_, green ? LOW : HIGH);
-    digitalWrite(bPin_, blue  ? LOW : HIGH);
+    digitalWrite(bPin_, blue ? LOW : HIGH);
 }
 
-void LedIndicator::off()    { setRGB(true,  true,  true);  }
-void LedIndicator::red()    { setRGB(false, true,  true);  }
-void LedIndicator::green()  { setRGB(true,  false, true);  }
-void LedIndicator::blue()   { setRGB(true,  true,  false); }
-void LedIndicator::yellow() { setRGB(false, false, true);  }
-void LedIndicator::cyan()   { setRGB(true,  false, false); }
-void LedIndicator::purple() { setRGB(false, true,  false); }
+void LedIndicator::off() {
+    setRGB(true, true, true);
+}
+void LedIndicator::red() {
+    setRGB(false, true, true);
+}
+void LedIndicator::green() {
+    setRGB(true, false, true);
+}
+void LedIndicator::blue() {
+    setRGB(true, true, false);
+}
+void LedIndicator::yellow() {
+    setRGB(false, false, true);
+}
+void LedIndicator::cyan() {
+    setRGB(true, false, false);
+}
+void LedIndicator::purple() {
+    setRGB(false, true, false);
+}
 
 void LedIndicator::blink(void (LedIndicator::*colorFunc)(), int times, int delayMs) {
     for (int i = 0; i < times; i++) {
@@ -39,21 +53,20 @@ void LedIndicator::blink(void (LedIndicator::*colorFunc)(), int times, int delay
 
 void LedIndicator::updateStatus(bool isCheckedIn, bool isReserved, bool isOccupied) {
     if (isCheckedIn) {
-        green();   // Sedang digunakan
+        green();  // Sedang digunakan
     } else if (isReserved) {
-        cyan();    // Meja direservasi
+        cyan();  // Meja direservasi
     } else if (isOccupied) {
         yellow();  // Ada orang tapi belum check-in
     } else {
-        blue();    // Kosong / tersedia
+        blue();  // Kosong / tersedia
     }
 }
 
 // ==========================================
 // UltrasonicSensor Implementation (HC-SR04)
 // ==========================================
-UltrasonicSensor::UltrasonicSensor(uint8_t trigPin, uint8_t echoPin)
-    : trigPin_(trigPin), echoPin_(echoPin) {}
+UltrasonicSensor::UltrasonicSensor(uint8_t trigPin, uint8_t echoPin) : trigPin_(trigPin), echoPin_(echoPin) {}
 
 void UltrasonicSensor::begin() {
     pinMode(trigPin_, OUTPUT);

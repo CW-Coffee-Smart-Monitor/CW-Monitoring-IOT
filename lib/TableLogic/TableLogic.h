@@ -18,15 +18,12 @@ struct TapResult {
     std::string activeUID;
 };
 
-enum class AutoCheckoutResult {
-    NONE,
-    WARNING_TRIGGERED,
-    TIMEOUT_TRIGGERED
-};
+enum class AutoCheckoutResult { NONE, WARNING_TRIGGERED, TIMEOUT_TRIGGERED };
 
 class TableManager {
 public:
-    explicit TableManager(int tableId = 12, float occupiedThresholdCm = 20.0f, unsigned long autoCheckoutTimeoutMs = 15000)
+    explicit TableManager(int tableId = 12, float occupiedThresholdCm = 20.0f,
+                          unsigned long autoCheckoutTimeoutMs = 15000)
         : tableId_(tableId),
           occupiedThresholdCm_(occupiedThresholdCm),
           autoCheckoutTimeoutMs_(autoCheckoutTimeoutMs),
@@ -36,9 +33,7 @@ public:
           lastOccupiedTime_(0),
           warningPrinted_(false) {}
 
-    bool isOccupied(float distanceCm) const {
-        return (distanceCm > 0.0f && distanceCm < occupiedThresholdCm_);
-    }
+    bool isOccupied(float distanceCm) const { return (distanceCm > 0.0f && distanceCm < occupiedThresholdCm_); }
 
     bool isCheckedIn() const { return isCheckedIn_; }
     void setCheckedIn(bool val) { isCheckedIn_ = val; }
@@ -80,10 +75,12 @@ public:
         }
 
         // Tapping different card while table is already occupied
-        return {TapResultType::REJECTED_ALREADY_USED_BY_OTHER, tappedUID, "TABLE_ALREADY_USED_BY_OTHER_UID", currentUID_};
+        return {TapResultType::REJECTED_ALREADY_USED_BY_OTHER, tappedUID, "TABLE_ALREADY_USED_BY_OTHER_UID",
+                currentUID_};
     }
 
-    AutoCheckoutResult updateAutoCheckout(float distanceCm, unsigned long currentTimeMs, std::string& outCheckedOutUID) {
+    AutoCheckoutResult updateAutoCheckout(float distanceCm, unsigned long currentTimeMs,
+                                          std::string& outCheckedOutUID) {
         bool occupied = isOccupied(distanceCm);
 
         if (!isCheckedIn_) {
@@ -135,4 +132,4 @@ private:
     bool warningPrinted_;
 };
 
-#endif // TABLE_LOGIC_H
+#endif  // TABLE_LOGIC_H

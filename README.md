@@ -91,6 +91,39 @@ pio test -e native -f test_command_handler
 
 ---
 
+## 🔍 Code Quality, Formatting & Static Analysis
+
+This repository enforces strict C++ diagnostics, automated formatting, and static analysis:
+
+### 1. Code Formatting (`clang-format`)
+Google C++ style with 4-space indent is configured in [`.clang-format`](.clang-format).
+To format all files:
+```bash
+clang-format -i src/*.cpp include/*.h lib/*/*.h lib/*/*.cpp test/*/*.cpp
+```
+
+### 2. Static Analysis & Linting (`pio check`)
+PlatformIO combines two complementary static analysis tools configured in `platformio.ini` and `.clang-tidy`:
+- **`cppcheck`**: Scans for classic memory leaks, buffer overruns, uninitialized pointers, and undefined behavior.
+- **`clang-tidy`**: Clang compiler AST analyzer checking modern C++ standards, bug-prone constructs, and readability rules.
+
+To run both analyzers:
+```bash
+pio check -e esp32dev --skip-packages
+```
+
+### 3. Strict Compiler Diagnostics
+Both `esp32dev` and `native` environments enforce strict compiler warnings (`-Wall -Wextra -Wunused`) to prevent hidden type-narrowing bugs or uninitialized variables.
+
+### 4. Git Pre-Commit Hook
+Install the Git hooks via `pre-commit` to automatically verify unit tests, syntax, and formatting before every commit:
+```bash
+pip install -e .[dev]
+pre-commit install
+```
+
+---
+
 ## 🔨 Building & Uploading Firmware
 
 ### 1. Build the ESP32 Firmware

@@ -23,13 +23,13 @@
 #define SOCKET_PORT 9001
 
 #define API_BASE_URL "http://152.42.207.49:9002"
-#define WEBHOOK_URL  "https://fasilita.my.id/api/webhook"
+#define WEBHOOK_URL "https://fasilita.my.id/api/webhook"
 
 // =====================
 // PIN RFID RC522 (SPI)
 // =====================
-#define SS_PIN   5
-#define RST_PIN  22
+#define SS_PIN 5
+#define RST_PIN 22
 
 // =====================
 // PIN ULTRASONIK HC-SR04
@@ -48,8 +48,8 @@
 // =====================
 // TIMING INTERVALS (ms)
 // =====================
-#define RFID_COOLDOWN_MS   2000
+#define RFID_COOLDOWN_MS 2000
 #define MONITOR_INTERVAL_MS 2000
-#define API_INTERVAL_MS     5000
+#define API_INTERVAL_MS 5000
 
-#endif // CONFIG_H
+#endif  // CONFIG_H

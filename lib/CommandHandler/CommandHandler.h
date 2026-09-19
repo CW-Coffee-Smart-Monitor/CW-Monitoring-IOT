@@ -1,9 +1,9 @@
 #ifndef COMMAND_HANDLER_H
 #define COMMAND_HANDLER_H
 
-#include <string>
 #include <algorithm>
 #include <cctype>
+#include <string>
 
 enum class CommandType {
     UNKNOWN,
@@ -31,13 +31,14 @@ class CommandHandler {
 public:
     static std::string trim(const std::string& str) {
         size_t first = str.find_first_not_of(" \t\r\n");
-        if (first == std::string::npos) return "";
+        if (first == std::string::npos)
+            return "";
         size_t last = str.find_last_not_of(" \t\r\n");
         return str.substr(first, (last - first + 1));
     }
 
     static std::string toLower(std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
         return s;
     }
 
@@ -101,4 +102,4 @@ public:
     }
 };
 
-#endif // COMMAND_HANDLER_H
+#endif  // COMMAND_HANDLER_H
