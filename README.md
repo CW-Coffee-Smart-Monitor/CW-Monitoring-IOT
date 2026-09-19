@@ -33,20 +33,24 @@ Smart Coworking Space / Desk Monitoring System powered by ESP32, RFID (MFRC522),
 
 ---
 
-## 🧪 Automated Unit Testing
-
-This project incorporates automated unit testing via **PlatformIO** and the **Unity** testing framework.
-
-Business logic is cleanly decoupled from physical hardware peripherals into modular libraries under `lib/`, allowing all core state machines, timers, and command parsers to be tested directly on the host machine in milliseconds.
-
-### Test Architecture
+## 📁 Project Architecture (PlatformIO Standard)
 
 ```
-test/
-├── test_table_logic/          # Tests for occupancy, RFID check-in/out, and auto-checkout timeout
-│   └── test_table_logic.cpp
-└── test_command_handler/      # Tests for socket string command parsing & case normalization
-    └── test_command_handler.cpp
+CW-Monitoring-IOT/
+├── include/
+│   └── Config.h               # Central configuration: GPIO pins, WiFi credentials, server IPs, timeouts
+├── lib/
+│   ├── TableLogic/            # Core business logic: seat occupancy, RFID check-in/out, auto-checkout
+│   ├── CommandHandler/        # TCP socket command parser & normalizer
+│   ├── HardwareDrivers/       # Common Anode RGB LED & HC-SR04 ultrasonic distance sensor drivers
+│   └── NetworkManager/        # WiFi connection, TCP Socket maintenance, HTTP REST validation & telemetry
+├── src/
+│   └── main.cpp               # Lightweight orchestrator (~220 lines): setup() and loop() event handling
+├── test/
+│   ├── test_table_logic/      # Native unit tests for TableLogic
+│   └── test_command_handler/  # Native unit tests for CommandHandler
+├── platformio.ini             # Dual-environment configuration (esp32dev & native)
+└── README.md
 ```
 
 ### Running Tests
